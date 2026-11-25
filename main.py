@@ -11,6 +11,7 @@ with its word count.
 """
 
 import os
+import re
 
 ENTRY = """Listen. The 47th siege of Aldermere ends tonight — I have the trebuchets, the ravens, your steward's signed confession, and... hold on. The kettle's on again, and if the east tower burns before the parley, I will be cross. Not angry. Cross is worse; angry at least gets things done.
 
@@ -27,10 +28,23 @@ def validate_entry(entry):
     if not 90 <= len(words) <= 115:
         raise ValueError(f"entry must be about 100 words, got {len(words)}")
     lowered = entry.lower()
-    for flat in ("i am tired", "i'm tired", "i am so tired",
-                 "i'm so tired", "i am weary", "i'm weary"):
-        if flat in lowered:
-            raise ValueError(f"entry states weariness flatly: {flat!r}")
+    # Flat weariness must never appear, even at a sentence start
+    # ("I am tired." / "I'm exhausted." / "So tired, I...").
+    flat_patterns = (
+        r"\bi'?m (so )?(tired|weary|exhausted)\b",
+        r"\bi am (so )?(tired|weary|exhausted)\b",
+    )
+    for pattern in flat_patterns:
+        if re.search(pattern, lowered):
+            raise ValueError(
+                f"entry states weariness flatly (pattern {pattern!r})")
+    # Positive gate: the tiredness must SHOW in the voice — at least one
+    # deflection or interruption (ellipsis, a "hold on", a trailing "So.")
+    # so the weariness lives in rhythm, not in a stated claim.
+    if not re.search(r"\.\.\.|hold on|^so\.", lowered, re.MULTILINE):
+        raise ValueError(
+            "entry must show weariness in the voice: needs a deflection "
+            "('...', 'hold on', 'So.') rather than a flat statement")
     return entry
 
 
